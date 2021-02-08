@@ -46,6 +46,9 @@
 #include <src/time.h>
 #include <src/args.h>
 
+#include <string>
+#include <iostream>
+
 
 #define GUI_BACKGROUND_COLOR (fl_rgb_color(240,240,240))
 #define GUI_INPUT_COLOR (fl_rgb_color(255,255,230))
@@ -269,6 +272,7 @@ private:
 	void showHelicalLayerLineProfile(int ipos);
 	void makeStarFileSelectedParticles(int save_selected, MetaDataTable &MDpart);
 	void saveSelectedParticles(int save_selected);
+	void recenterSaveSelectedParticles(int save_selected);
 	void showSelectedParticles(int save_selected);
 	void saveTrainingSet();
 	void saveSelected(int save_selected);

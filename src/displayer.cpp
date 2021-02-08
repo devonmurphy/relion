@@ -717,6 +717,7 @@ int multiViewerCanvas::handle(int ev)
 						{ "Show particles from selected classes" },
 						{ "Set selection type" },
 						{ "Save selected classes" }, // idx = 14; change below when re-ordered!!
+                        { "Recenter and save selected classes" },
 						{ "Quit" },
 						{ 0 }
 					};
@@ -766,6 +767,12 @@ int multiViewerCanvas::handle(int ev)
 						// as many users close the window through the operating system's cross symbol on the window, instead of a proper exit
 						RELION_EXIT_SUCCESS;
 					}
+                    else if ( strcmp(m->label(), "Recenter and save selected classes") == 0 )
+                    {
+                        saveBackupSelection();
+                        saveSelected(current_selection_type);
+                        recenterSaveSelectedParticles(current_selection_type);
+                    }
 					else if ( strcmp(m->label(), "Quit") == 0 )
 					{
 						//clean exit
@@ -1302,6 +1309,60 @@ void multiViewerCanvas::saveSelectedParticles(int save_selected)
 	else
 		std::cout <<" No classes selected. Please select one or more classes..." << std::endl;
 }
+
+
+void multiViewerCanvas::recenterSaveSelectedParticles(int save_selected)
+{
+       if (fn_selected_parts == "")
+       {
+               std::cout << " Not saving selected particles, as no filename was provided..." << std::endl;
+               return;
+       }
+       MetaDataTable MDpart;
+       makeStarFileSelectedParticles(save_selected, MDpart);
+       if (nr_regroups > 0)
+               regroupSelectedParticles(MDpart, *MDgroups, nr_regroups);
+       int nparts = MDpart.numberOfObjects();
+       if (nparts > 0)
+       {
+               MDpart.write(fn_selected_parts);
+               std::cout << "Saved "<< fn_selected_parts << " with " << nparts << " selected particles." << std::endl;
+       }
+       else
+               std::cout <<" No classes selected. Please select one or more classes..." << std::endl;
+
+       int myclass, nselected_classes = 0;
+       FileName fn_img;
+       std::vector<FileName> selectedFiles;
+       for (long int ipos = 0; ipos < boxes.size(); ipos++)
+       {
+           if (boxes[ipos]->selected == SELECTED)
+               {
+                   nselected_classes++;
+                   // Get class number (may not be ipos+1 if resorted!)
+                    boxes[ipos]->MDimg.getValue(display_label, fn_img);
+                    selectedFiles.push_back(fn_img);
+                }
+       }
+       char cwd[1024];
+       if(getcwd(cwd, sizeof(cwd)) != NULL){
+               std::string scale = floatToString(ori_scale);
+               std::string cwdStr(cwd);
+               cwdStr += '/';
+               std::string command = "`which recenterClass.py` "+scale+" "+fn_selected_parts+" "+cwdStr;
+               for (int classes = 0; classes < selectedFiles.size(); classes++){
+                   command += " ";
+                   command += selectedFiles[classes];
+               }
+               command += " &";
+               std::cout << command << std::endl;
+               int res = system(command.c_str());
+       }
+       else{
+               perror("Error: couldn't get working directory");
+       }
+}
+
 
 void regroupSelectedParticles(MetaDataTable &MDdata, MetaDataTable &MDgroups, int nr_regroups)
 {
