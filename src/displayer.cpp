@@ -1325,7 +1325,7 @@ void multiViewerCanvas::recenterSaveSelectedParticles(int save_selected)
        int nparts = MDpart.numberOfObjects();
        if (nparts > 0)
        {
-               MDpart.write(fn_selected_parts);
+	       obsModel->save(MDpart, fn_selected_parts, "particles");
                std::cout << "Saved "<< fn_selected_parts << " with " << nparts << " selected particles." << std::endl;
        }
        else

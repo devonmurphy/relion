@@ -62,17 +62,45 @@ def load_arguements():
 def recenter_classes(data, mouseVectors, workingDir):
     # iterate through .star file and move all images in a class
     allData = []
-    done = False
     scale = 1 
     #find the column number for Coordinate X, Coordinate Y, Origin X, Origin Y, Psi angle, and image class number
-    columnValue = 0
     loadColumns = False
+    loadHeaders = True
     loadData = False
     particleCount = 0
-    class_column = originX_column = originY_column = coordX_column = coordY_column = psi_column = -1
+    loopCounter = 0
+    columnValue = class_column = imagePixelSize_column = micrographPixelSize_column = originX_column = originY_column = coordX_column = coordY_column = psi_column = -1
     for line in data:
-       # This gets the column numbers of the various parameters we must modify
-        if(loadColumns):
+        # This loads in the headers of the star files and calculates scale
+        if(loadHeaders):
+            if line[0] == '_':
+                columnValue += 1
+            else:
+                if(imagePixelSize_column != -1 and  micrographPixelSize_column != -1):
+                    elements = line.split()
+                    if len(elements) >= max(imagePixelSize_column,micrographPixelSize_column):
+                        # divide _rlnImagePixelSize by _rlnMicrographOriginalPixelSize to get the scale.
+                        scale = float(elements[imagePixelSize_column]) / float(elements[micrographPixelSize_column])
+                # if _loop has been seen twice then data is starting to load
+                if  loopCounter >= 2:
+                    loadData = True
+                    loadHeaders = False
+
+            # Gotta check if we are still loading headers before we append data
+            if(loadHeaders):
+                allData.append(line)
+            # reset the columnValue when we get to the data_particles header
+            if  'data_particles' in line:
+                columnValue = -1
+            # count the number of times loop_ has been seen
+            if  'loop_' in line:
+                loopCounter += 1
+
+            # load in the columnValues for each of the data fields we care about
+            if '_rlnImagePixelSize' in line:
+                imagePixelSize_column = columnValue
+            if '_rlnMicrographOriginalPixelSize' in line:
+                micrographPixelSize_column = columnValue
             if '_rlnOriginX' in line: 
                 originX_column = columnValue
             if '_rlnOriginY' in line:
@@ -85,11 +113,7 @@ def recenter_classes(data, mouseVectors, workingDir):
                 psi_column = columnValue
             if '_rlnClassNumber' in line:
                 class_column = columnValue
-            columnValue += 1
-            # If a line does not begin with '_' then start loading data
-            if line[0] != '_':
-                loadColumns = False
-                loadData = True
+
         # This loads in the data of star file and then rotates it by the mouse click
         if(loadData):
             elements = line.split()
@@ -102,8 +126,8 @@ def recenter_classes(data, mouseVectors, workingDir):
             	coordY = float(elements[coordY_column])
             	if imageClass in mouseVectors:
 		    particleCount += 1
-                    mouseX = float(mouseVectors[imageClass][0])
-                    mouseY = float(mouseVectors[imageClass][1])
+                    mouseX = float(mouseVectors[imageClass][0])*scale
+                    mouseY = float(mouseVectors[imageClass][1])*scale
                     # rotates the mouseX and mouseY coords to the image plane - see:
                     # https://en.wikipedia.org/wiki/Rotation_matrix#In_two_dimensions
                     mouseXRot = mouseX*math.cos(-psi)-mouseY*math.sin(-psi)
@@ -113,17 +137,12 @@ def recenter_classes(data, mouseVectors, workingDir):
                     newY = originY - mouseYRot
                     elements[originX_column] = str(newX)
                     elements[originY_column] = str(newY)
-                    line = "     "+"    ".join(elements)+"\n"
+                    line = "    ".join(elements)+"\n"
                     allData.append(line)
                 else:
                     allData.append(line)
             else:
                 allData.append(line)
-        else:
-            allData.append(line)
-        # If the string 'loop_' is in line, start loading columns
-        if 'loop_' in line:
-            loadColumns = True
     return allData, particleCount
 
 # Loops through each class in selectedClasses and creates a relion_display process
@@ -148,20 +167,6 @@ def spawn_relion_displays(selectedClasses):
         if classNumber not in mouseVectors:
             mouseVectors[classNumber]=['0','0']
     return mouseVectors
-
-# Gets the ratio between particle box size and scaled size to get scale
-def get_scale(fileName, workingDir):
-    newFileName = '/'.join(fileName.split('@')[1].split('/')[:2]) + "/run.job"
-    loadFile = open(workingDir+newFileName,'r')
-    data = loadFile.readlines()
-    loadFile.close()
-    for line in data:
-        if "Particle box size (pix):" in line:
-            boxSize = int(line.split('==')[1])
-        if "-scaled size (pixels):" in line:
-            scaleSize = int(line.split('==')[1])
-    scale = boxSize/scaleSize
-    return scale
 
 # Load arguments & files -> spawn relion_displays -> recenter data based on output -> write out new .star file
 def main():
