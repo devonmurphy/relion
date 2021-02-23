@@ -62,7 +62,7 @@ def load_arguements():
 def recenter_classes(data, mouseVectors, workingDir):
     # iterate through .star file and move all images in a class
     allData = []
-    scale = 1 
+    scale = -1
     #find the column number for Coordinate X, Coordinate Y, Origin X, Origin Y, Psi angle, and image class number
     loadColumns = False
     loadHeaders = True
@@ -78,7 +78,7 @@ def recenter_classes(data, mouseVectors, workingDir):
             else:
                 if(imagePixelSize_column != -1 and  micrographPixelSize_column != -1):
                     elements = line.split()
-                    if len(elements) >= max(imagePixelSize_column,micrographPixelSize_column):
+                    if len(elements) >= max(imagePixelSize_column,micrographPixelSize_column) and scale == -1:
                         # divide _rlnImagePixelSize by _rlnMicrographOriginalPixelSize to get the scale.
                         scale = float(elements[imagePixelSize_column]) / float(elements[micrographPixelSize_column])
                 # if _loop has been seen twice then data is starting to load
